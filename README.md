@@ -1,0 +1,1 @@
+Repository to hold projects developed to explore, understand and gain experience in Data Science.
