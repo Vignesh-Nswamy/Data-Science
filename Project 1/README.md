@@ -1,0 +1,1 @@
+Data cleaning, visualization and analysis of the eletion and demographic data of 2018 US Senate Elections
