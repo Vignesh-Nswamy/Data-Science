@@ -1,0 +1,87 @@
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.1'
+      jupytext_version: 1.2.4
+  kernelspec:
+    display_name: Python 3
+    language: python
+    name: python3
+---
+
+```{python}
+# %autosave 0
+```
+
+```{python}
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import KFold
+from sklearn import linear_model
+import pandas as pd
+import numpy as np
+import os
+```
+
+```{python}
+data = pd.read_csv(os.getcwd() + '\data\merged_train.csv')
+data.head()
+```
+
+**Patitioning using cross-validation method**
+
+```{python}
+# Partitioning the dataset using KFold cross-validation
+kf = KFold(n_splits=3, random_state=None, shuffle=False)
+# Seperating democratic and republican counties
+democratic = data[data['Party'] == 1]
+republican = data[data['Party'] == 0]
+democratic[democratic.columns[3:16]].head()
+```
+
+**Splitting, Standardization and Predicting Number of Votes for the Democratic Counties**
+
+```{python}
+for train_indices, test_indices in kf.split(democratic):
+    x_train, y_train = democratic[democratic.columns[3:16]].iloc[train_indices], democratic['Democratic'].iloc[train_indices]
+    x_test, y_test = democratic[democratic.columns[3:16]].iloc[test_indices], democratic['Democratic'].iloc[test_indices]
+    scaler = StandardScaler()
+    scaler.fit(x_train)
+    x_train = scaler.transform(x_train)
+    x_test = scaler.transform(x_test)
+    model = linear_model.Lasso(alpha=1)
+    fitted_model = model.fit(X = x_train, y = y_train)
+    predicted = fitted_model.predict(x_test)
+    corr_coef = np.corrcoef(predicted, y_test)[1, 0]
+    R_squared = corr_coef ** 2
+    print(fitted_model.coef_)
+    print(model.score(X = x_test, y = y_test))
+    print('\n')
+```
+
+**Splitting, Standardization and Predicting Number of Votes for the Democratic Counties**
+
+```{python}
+for train_indices, test_indices in kf.split(republican):
+    x_train, y_train = republican[republican.columns[3:16]].iloc[train_indices], republican['Republican'].iloc[train_indices]
+    x_test, y_test = republican[republican.columns[3:16]].iloc[test_indices], republican['Republican'].iloc[test_indices]
+    scaler = StandardScaler()
+    scaler.fit(x_train)
+    x_train = scaler.transform(x_train)
+    x_test = scaler.transform(x_test)
+    model = linear_model.LinearRegression()
+    fitted_model = model.fit(X = x_train, y = y_train)
+    predicted = fitted_model.predict(x_test)
+    corr_coef = np.corrcoef(predicted, y_test)[1, 0]
+    R_squared = corr_coef ** 2
+    print(fitted_model.coef_)
+    print(model.score(X = x_test, y = y_test))
+    print('\n')
+```
+
+```{python}
+
+```
