@@ -13,16 +13,17 @@ jupyter:
 ---
 
 ```{python}
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_validate
 from sklearn.neighbors import KNeighborsClassifier 
 from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.model_selection import KFold
+from sklearn.pipeline import Pipeline
 from sklearn import linear_model
 import matplotlib.pyplot as plt
+from sklearn.svm import SVC
 from sklearn import metrics
-from sklearn.svm import SVC, LinearSVC
 import seaborn as sns
 import pandas as pd
 import numpy as np
@@ -31,34 +32,36 @@ import os
 
 ```{python}
 data = pd.read_csv(os.getcwd() + '\data\merged_train.csv')
-# data['Party'].describe()
-data.head()
 ```
 
 **Splitting data using the hold-out method**
 
 ```{python}
 # columns = np.array([i for i in range(4, 16)], dtype=np.intp) # All columns
-columns = np.array([4, 5, 6, 7, 10, 11, 12, 14, 15], dtype=np.intp) # All columns
-# columns = np.array([3, 4, 5, 7, 10, 14, 15], dtype=np.intp) # All columns
-# columns = np.array([3, 4, 5, 6, 7, 11, 14, 15], dtype=np.intp) # All columns
-print('Columns being used for building the classifier: {}'.format( data.iloc[:, columns].columns ))
+columns = np.array([3, 4, 5, 7, 9, 10, 13, 14, 15], dtype=np.intp)
+# columns = np.array([3, 4, 5, 7, 10, 14, 15], dtype=np.intp)
+# columns = np.array([3, 4, 5, 6, 7, 11, 14, 15], dtype=np.intp)
+
+# print('Columns being used for building the classifier: {}'.format( data.iloc[:, columns].columns ))
+
 x_train, x_test, y_train, y_test = train_test_split(data.iloc[:, columns], data['Party'], train_size=0.75, random_state=0)
 ```
 
-**Standardizing the test and training data**
+**Building a classifier**
 
 ```{python}
-scaler = StandardScaler()
-scaler.fit(x_train)
-x_train = scaler.transform(x_train)
-x_test = scaler.transform(x_test)
+def train_classifier(clf, x_train, y_train):
+    classifier = Pipeline([('scalar', StandardScaler()),
+        ('clf', clf)
+    ])
+    classifier.fit(x_train, y_train)
+    return classifier
 ```
 
-**Function for printing evaluation metrics**
+**Evaluate the performance of a classifier**
 
 ```{python}
-def evaluate(y_test, y_pred):
+def holdout_score(y_test, y_pred):
     return_str = ''
     accuracy = metrics.accuracy_score(y_test, y_pred)
     return_str += 'Accuracy: {}'.format( accuracy ) + '\n'
@@ -73,8 +76,7 @@ def evaluate(y_test, y_pred):
 
 ```{python}
 def decision_tree(x_train, y_train):
-    classifier = DecisionTreeClassifier(criterion = "entropy", class_weight={1: 2.5})
-    classifier.fit(x_train, y_train)
+    classifier = train_classifier(DecisionTreeClassifier(criterion = "entropy", class_weight={1: 2}), x_train, y_train)
     y_pred = classifier.predict(x_test)
     conf_matrix = metrics.confusion_matrix(y_test, y_pred)
     sns.heatmap(conf_matrix, annot = True, fmt = ".3f", square = True, cmap = plt.cm.Blues)
@@ -82,15 +84,18 @@ def decision_tree(x_train, y_train):
     plt.xlabel('Predicted')
     plt.title('Confusion matrix')
     plt.tight_layout()
-    print(evaluate(y_test, y_pred))
+    print(holdout_score(y_test, y_pred))
+```
+
+```{python}
+decision_tree(x_train, y_train)
 ```
 
 ## K-Nearest Neighbours Classifier
 
 ```{python}
 def k_nearest_neighbors(x_train, y_train):
-    classifier = KNeighborsClassifier(n_neighbors = 3)  
-    classifier.fit(x_train, y_train)
+    classifier = train_classifier(KNeighborsClassifier(n_neighbors = 3), x_train, y_train)
     y_pred = classifier.predict(x_test)
     conf_matrix = metrics.confusion_matrix(y_test, y_pred)
     sns.heatmap(conf_matrix, annot = True, fmt = ".3f", square = True, cmap = plt.cm.Blues)
@@ -98,60 +103,50 @@ def k_nearest_neighbors(x_train, y_train):
     plt.xlabel('Predicted')
     plt.title('Confusion matrix')
     plt.tight_layout()
-    print(evaluate(y_test, y_pred))
-```
-
-## Naive Bayes Classifier
-
-```{python}
-def naive_bayes(x_train, y_train):
-    classifier = GaussianNB()  
-    classifier.fit(x_train, y_train)
-    y_pred = classifier.predict(x_test)
-    conf_matrix = metrics.confusion_matrix(y_test, y_pred)
-    sns.heatmap(conf_matrix, annot = True, fmt = ".3f", square = True, cmap = plt.cm.Blues)
-    plt.ylabel('Actual')
-    plt.xlabel('Predicted')
-    plt.title('Confusion matrix')
-    plt.tight_layout()
-    print(evaluate(y_test, y_pred))
-```
-
-## SVM Classifier
-
-```{python}
-def svm(x_train, y_train):
-    classifier = SVC(kernel='rbf', class_weight={1: 2.16})
-    classifier.fit(x_train, y_train)
-    y_pred = classifier.predict(x_test)
-    conf_matrix = metrics.confusion_matrix(y_test, y_pred)
-    sns.heatmap(conf_matrix, annot = True, fmt = ".3f", square = True, cmap = plt.cm.Blues)
-    plt.ylabel('Actual')
-    plt.xlabel('Predicted')
-    plt.title('Confusion matrix')
-    plt.tight_layout()
-    print(evaluate(y_test, y_pred))
-```
-
-## Test Different Classifiers
-
-```{python}
-decision_tree(x_train, y_train)
+    print(holdout_score(y_test, y_pred))
 ```
 
 ```{python}
 k_nearest_neighbors(x_train, y_train)
 ```
 
+## Naive Bayes Classifier
+
+```{python}
+def naive_bayes(x_train, y_train):
+    classifier = train_classifier(GaussianNB(), x_train, y_train)
+    y_pred = classifier.predict(x_test)
+    conf_matrix = metrics.confusion_matrix(y_test, y_pred)
+    sns.heatmap(conf_matrix, annot = True, fmt = ".3f", square = True, cmap = plt.cm.Blues)
+    plt.ylabel('Actual')
+    plt.xlabel('Predicted')
+    plt.title('Confusion matrix')
+    plt.tight_layout()
+    print(holdout_score(y_test, y_pred))
+```
+
 ```{python}
 naive_bayes(x_train, y_train)
+```
+
+## SVM Classifier
+
+```{python}
+def svm(x_train, y_train):
+    classifier = train_classifier(SVC(kernel='rbf', class_weight={1: 2.16}), x_train, y_train)
+    y_pred = classifier.predict(x_test)
+    conf_matrix = metrics.confusion_matrix(y_test, y_pred)
+    sns.heatmap(conf_matrix, annot = True, fmt = ".3f", square = True, cmap = plt.cm.Blues)
+    plt.ylabel('Actual')
+    plt.xlabel('Predicted')
+    plt.title('Confusion matrix')
+    plt.tight_layout()
+    print(holdout_score(y_test, y_pred))
 ```
 
 ```{python}
 svm(x_train, y_train)
 ```
-
-**Clearly SVM and Naive Bayes classifiers out-perform the others. However, the best would be the SVM because the data is skewed and non linear**
 
 ```{python}
 

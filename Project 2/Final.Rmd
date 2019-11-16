@@ -1,0 +1,232 @@
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.1'
+      jupytext_version: 1.2.4
+  kernelspec:
+    display_name: Python 3
+    language: python
+    name: python3
+---
+
+```{python}
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.pipeline import Pipeline
+from sklearn import linear_model
+import matplotlib.pyplot as plt
+from sklearn.svm import SVC
+from sklearn import metrics
+import seaborn as sns
+import pandas as pd
+import numpy as np
+import os
+```
+
+```{python}
+data = pd.read_csv(os.getcwd() + '\data\merged_train.csv')
+# data.head()
+```
+
+## Regression
+
+
+Regression model to predict the votes cast for Republican and Democratic parties in each county
+
+
+**Choosing variables**
+
+```{python}
+correlation = data.iloc[:, np.array([3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17], dtype=np.intp)].corr()
+fig, ax = plt.subplots(figsize=(15,10))
+sns.heatmap(correlation,cmap="YlGnBu",annot=True, ax=ax)
+plt.show()
+```
+
+```{python}
+# columns = np.array([3, 4, 5, 7, 10, 11, 14, 15], dtype=np.intp)
+# columns = np.array([i for i in range(3, 16)], dtype=np.intp)
+columns = np.array([3, 7, 11, 14, 15], dtype=np.intp)
+
+k = len(columns)
+```
+
+**Method for model evaluation**
+
+```{python}
+def eval_regression_model(y_test, y_pred):
+    eval = ''
+    eval += 'Root Mean Square Error: {}'.format(metrics.mean_squared_error(y_test, y_pred) ** 0.5) + '\n'
+    eval += 'Mean Absolute Error: {}'.format(metrics.mean_absolute_error(y_test, y_pred)) + '\n'
+    n = len(y_test)
+    r2 = metrics.r2_score(y_test, y_pred)
+    adjusted_r2 = 1 - ((1-r2)*(n-1)/(n-k-1))
+    eval += 'R-Squared: {}'.format(r2) + '\n'
+    eval += 'Adjusted R-Squared: {}'.format(adjusted_r2)
+    return eval
+```
+
+**Method for building and training a regression model**
+
+```{python}
+def train_regression_model(x, y):
+    model = Pipeline([
+        ('scalar', StandardScaler()),
+        ('clf', linear_model.LassoCV(cv = 3))
+    ])
+    model.fit(x, y)
+    return model
+```
+
+**Predicting the votes cast for the democratic party**
+
+```{python}
+# Splitting using hold-out method
+x_train, x_test, y_train, y_test = train_test_split(data.iloc[:, columns], data['Democratic'], train_size=0.75, random_state=5)
+
+dem_model = train_regression_model(x_train, y_train)
+y_pred = dem_model.predict(x_test)
+print(eval_regression_model(y_test, y_pred))
+```
+
+**Predicting the votes cast for the Republican party**
+
+```{python}
+# Splitting using hold-out method
+x_train, x_test, y_train, y_test = train_test_split(data.iloc[:, columns], data['Republican'], train_size=0.75, random_state=5)
+
+rep_model = train_regression_model(x_train, y_train)
+y_pred = rep_model.predict(x_test)
+print(eval_regression_model(y_test, y_pred))
+```
+
+## Classification
+
+
+Classification models to classify each county as either republican or democratic
+
+
+**Choosing variables**
+
+
+Plot correlation heatmap and choose the variables that have a strong negative or positive correlation with the target variable
+
+```{python}
+correlation = data.iloc[:, np.array([3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 18], dtype=np.intp)].corr()
+fig, ax = plt.subplots(figsize=(15,10))
+sns.heatmap(correlation,cmap="YlGnBu",annot=True, ax=ax)
+plt.show()
+```
+
+```{python}
+# columns = np.array([i for i in range(4, 16)], dtype=np.intp) # All columns
+columns = np.array([3, 4, 5, 7, 10, 14, 15], dtype=np.intp)
+# columns = np.array([3, 4, 5, 7, 10, 14, 15], dtype=np.intp)
+# columns = np.array([3, 4, 5, 6, 7, 11, 14, 15], dtype=np.intp)
+
+# Splitting the dataset using hold-out method
+x_train, x_test, y_train, y_test = train_test_split(data.iloc[:, columns], data['Party'], train_size=0.75, random_state=0)
+```
+
+**Method for evaluating a classifier**
+
+```{python}
+def eval_classifier(y_test, y_pred):
+    return_str = ''
+    accuracy = metrics.accuracy_score(y_test, y_pred)
+    return_str += 'Accuracy: {}'.format( accuracy ) + '\n'
+    return_str += 'Error: {}'.format( 1 - accuracy ) + '\n'
+    return_str += 'Precision: {}'.format( metrics.precision_score(y_test, y_pred, average = None) ) + '\n'
+    return_str += 'Recall: {}'.format( metrics.recall_score(y_test, y_pred, average = None) ) + '\n'
+    return_str += 'F1 Score: {}'.format( metrics.f1_score(y_test, y_pred, average = None) )
+    return return_str
+```
+
+**Method for building and training a classifier**
+
+```{python}
+def train_classifier(clf, x_train, y_train):
+    classifier = Pipeline([('scalar', StandardScaler()),
+        ('clf', clf)
+    ])
+    classifier.fit(x_train, y_train)
+    return classifier
+```
+
+**Using Decision Tree for classification**
+
+```{python}
+# We are using 'entropy' as the splitting criterion and increasing the class weight of the class '1'
+# because the data is skewed
+
+dt_classifier = train_classifier(DecisionTreeClassifier(criterion = "entropy"), x_train, y_train)
+
+y_pred = dt_classifier.predict(x_test)
+conf_matrix = metrics.confusion_matrix(y_test, y_pred)
+sns.heatmap(conf_matrix, annot = True, fmt = ".3f", square = True, cmap = plt.cm.Blues)
+plt.ylabel('Actual')
+plt.xlabel('Predicted')
+plt.title('Confusion matrix')
+plt.tight_layout()
+print(eval_classifier(y_test, y_pred))
+```
+
+**Using SVM for classification**
+
+```{python}
+# We are using 'rbf' kernel
+svm_classifier = train_classifier(SVC(kernel='rbf'), x_train, y_train)
+
+y_pred = svm_classifier.predict(x_test)
+conf_matrix = metrics.confusion_matrix(y_test, y_pred)
+sns.heatmap(conf_matrix, annot = True, fmt = ".3f", square = True, cmap = plt.cm.Blues)
+plt.ylabel('Actual')
+plt.xlabel('Predicted')
+plt.title('Confusion matrix')
+plt.tight_layout()
+print(eval_classifier(y_test, y_pred))
+```
+
+**Using Naive Bayes Classifier**
+
+```{python}
+nb_classifier = train_classifier(GaussianNB(), x_train, y_train)
+y_pred = nb_classifier.predict(x_test)
+conf_matrix = metrics.confusion_matrix(y_test, y_pred)
+sns.heatmap(conf_matrix, annot = True, fmt = ".3f", square = True, cmap = plt.cm.Blues)
+plt.ylabel('Actual')
+plt.xlabel('Predicted')
+plt.title('Confusion matrix')
+plt.tight_layout()
+print(eval_classifier(y_test, y_pred))
+```
+
+## Testing the regression and classification models
+
+
+The best performing regression and classification modes are tested below
+
+```{python}
+test_data = pd.read_csv(os.getcwd() + '\data\demographics_test.csv')
+# test_data.head()
+```
+
+```{python}
+columns = np.array([3, 4, 5, 7, 10, 11, 14, 15], dtype=np.intp)
+test_data['Democratic'] = dem_model.predict(test_data.iloc[:, columns])
+```
+
+```{python}
+columns = np.array([3, 4, 5, 7, 10, 11, 14, 15], dtype=np.intp)
+test_data['Republican'] = rep_model.predict(test_data.iloc[:, columns])
+```
+
+```{python}
+columns = np.array([3, 4, 5, 7, 9, 10, 13, 14, 15], dtype=np.intp)
+test_data['Party'] = nb_classifier.predict(test_data.iloc[:, columns])
+```
