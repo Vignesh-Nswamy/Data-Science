@@ -1,0 +1,88 @@
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.1'
+      jupytext_version: 1.2.4
+  kernelspec:
+    display_name: Python 3
+    language: python
+    name: python3
+---
+
+```{python}
+from sklearn.model_selection import train_test_split, cross_validate
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import KFold
+from sklearn.pipeline import Pipeline
+import statsmodels.formula.api as sm
+from sklearn import linear_model
+from sklearn import metrics
+import pandas as pd
+import numpy as np
+import os
+```
+
+```{python}
+data = pd.read_csv(os.getcwd() + '\data\merged_train.csv')
+```
+
+**Choose columns**
+
+```{python}
+columns = np.array([3, 4, 5, 6, 7, 10, 11, 12, 14, 15], dtype=np.intp)
+# columns = np.array([i for i in range(3, 16)], dtype=np.intp)
+
+k = len(columns)
+```
+
+**Model Evaluation**
+
+```{python}
+def evaluate(y_test, y_pred):
+    eval = ''
+    eval += 'Root Mean Square Error: {}'.format(metrics.mean_squared_error(y_test, y_pred) ** 0.5) + '\n'
+    eval += 'Mean Absolute Error: {}'.format(metrics.mean_absolute_error(y_test, y_pred)) + '\n'
+    n = len(y_test)
+    r2 = metrics.r2_score(y_test, y_pred)
+    adjusted_r2 = 1 - ((1-r2)*(n-1)/(n-k-1))
+    eval += 'R-Squared: {}'.format(r2) + '\n'
+    eval += 'Adjusted R-Squared: {}'.format(adjusted_r2)
+    return eval
+```
+
+**Training Model**
+
+```{python}
+def train_model(x, y):
+    model = Pipeline([
+        ('scalar', StandardScaler()),
+        ('clf', linear_model.LassoCV(cv = 3))
+    ])
+    model.fit(x, y)
+    return model
+```
+
+**Democratic votes**
+
+```{python}
+x_train, x_test, y_train, y_test = train_test_split(data.iloc[:, columns], data['Democratic'], train_size=0.75)
+model = train_model(x_train, y_train)
+y_pred = model.predict(x_test)
+print(evaluate(y_test, y_pred))
+```
+
+**Republican Votes**
+
+```{python}
+x_train, x_test, y_train, y_test = train_test_split(data.iloc[:, columns], data['Republican'], train_size=0.75)
+model = train_model(x_train, y_train)
+y_pred = model.predict(x_test)
+print(evaluate(y_test, y_pred))
+```
+
+```{python}
+
+```
