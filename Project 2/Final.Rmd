@@ -51,9 +51,9 @@ plt.show()
 ```{python}
 # columns = np.array([3, 4, 5, 7, 10, 11, 14, 15], dtype=np.intp)
 # columns = np.array([i for i in range(3, 16)], dtype=np.intp)
-columns = np.array([3, 7, 11, 14, 15], dtype=np.intp)
+reg_columns = np.array([3, 7, 11, 14, 15], dtype=np.intp)
 
-k = len(columns)
+k = len(reg_columns)
 ```
 
 **Method for model evaluation**
@@ -78,6 +78,7 @@ def train_regression_model(x, y):
     model = Pipeline([
         ('scalar', StandardScaler()),
         ('clf', linear_model.LassoCV(cv = 3))
+#         ('clf', linear_model.LinearRegression())
     ])
     model.fit(x, y)
     return model
@@ -87,7 +88,7 @@ def train_regression_model(x, y):
 
 ```{python}
 # Splitting using hold-out method
-x_train, x_test, y_train, y_test = train_test_split(data.iloc[:, columns], data['Democratic'], train_size=0.75, random_state=5)
+x_train, x_test, y_train, y_test = train_test_split(data.iloc[:, reg_columns], data['Democratic'], train_size=0.75, random_state=5)
 
 dem_model = train_regression_model(x_train, y_train)
 y_pred = dem_model.predict(x_test)
@@ -98,7 +99,7 @@ print(eval_regression_model(y_test, y_pred))
 
 ```{python}
 # Splitting using hold-out method
-x_train, x_test, y_train, y_test = train_test_split(data.iloc[:, columns], data['Republican'], train_size=0.75, random_state=5)
+x_train, x_test, y_train, y_test = train_test_split(data.iloc[:, reg_columns], data['Republican'], train_size=0.75, random_state=5)
 
 rep_model = train_regression_model(x_train, y_train)
 y_pred = rep_model.predict(x_test)
@@ -125,12 +126,12 @@ plt.show()
 
 ```{python}
 # columns = np.array([i for i in range(4, 16)], dtype=np.intp) # All columns
-columns = np.array([3, 4, 5, 7, 10, 14, 15], dtype=np.intp)
+class_columns = np.array([3, 4, 5, 7, 10, 14, 15], dtype=np.intp)
 # columns = np.array([3, 4, 5, 7, 10, 14, 15], dtype=np.intp)
 # columns = np.array([3, 4, 5, 6, 7, 11, 14, 15], dtype=np.intp)
 
 # Splitting the dataset using hold-out method
-x_train, x_test, y_train, y_test = train_test_split(data.iloc[:, columns], data['Party'], train_size=0.75, random_state=0)
+x_train, x_test, y_train, y_test = train_test_split(data.iloc[:, class_columns], data['Party'], train_size=0.75, random_state=0)
 ```
 
 **Method for evaluating a classifier**
@@ -217,16 +218,18 @@ test_data = pd.read_csv(os.getcwd() + '\data\demographics_test.csv')
 ```
 
 ```{python}
-columns = np.array([3, 4, 5, 7, 10, 11, 14, 15], dtype=np.intp)
-test_data['Democratic'] = dem_model.predict(test_data.iloc[:, columns])
+test_data['Democratic'] = dem_model.predict(test_data.iloc[:, reg_columns])
 ```
 
 ```{python}
-columns = np.array([3, 4, 5, 7, 10, 11, 14, 15], dtype=np.intp)
-test_data['Republican'] = rep_model.predict(test_data.iloc[:, columns])
+test_data['Republican'] = rep_model.predict(test_data.iloc[:, reg_columns])
+```
+
+```{python}
+test_data[test_data['Democratic'] < 0].count()
 ```
 
 ```{python}
 columns = np.array([3, 4, 5, 7, 9, 10, 13, 14, 15], dtype=np.intp)
-test_data['Party'] = nb_classifier.predict(test_data.iloc[:, columns])
+test_data['Party'] = nb_classifier.predict(test_data.iloc[:, class_columns])
 ```
