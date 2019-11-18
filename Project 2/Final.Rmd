@@ -214,22 +214,21 @@ The best performing regression and classification modes are tested below
 
 ```{python}
 test_data = pd.read_csv(os.getcwd() + '\data\demographics_test.csv')
+scaler = StandardScaler()
+scaler.fit(test_data)
+reg_x = scaler.transform(test_data.iloc[:, reg_columns])
+clas_x = scaler.transform(test_data.iloc[:, class_columns])
 # test_data.head()
 ```
 
 ```{python}
-test_data['Democratic'] = dem_model.predict(test_data.iloc[:, reg_columns])
+test_data['Democratic'] = dem_model.predict(reg_x)
 ```
 
 ```{python}
-test_data['Republican'] = rep_model.predict(test_data.iloc[:, reg_columns])
+test_data['Republican'] = rep_model.predict(reg_x)
 ```
 
 ```{python}
-test_data[test_data['Democratic'] < 0].count()
-```
-
-```{python}
-columns = np.array([3, 4, 5, 7, 9, 10, 13, 14, 15], dtype=np.intp)
-test_data['Party'] = nb_classifier.predict(test_data.iloc[:, class_columns])
+test_data['Party'] = nb_classifier.predict()
 ```
